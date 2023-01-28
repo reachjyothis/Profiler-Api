@@ -1,8 +1,8 @@
 ﻿using Dapper;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Profiler_Api.Models;
 using System.Data;
+using Microsoft.AspNetCore.Authorization;
 using Profiler_Api.Repository;
 
 
@@ -34,15 +34,15 @@ public class AccountController : ControllerBase
         dpParam.Add("retVal", DbType.String, direction: ParameterDirection.Output);
         var result = _authentication.Execute_Command<User>("sp_loginUser", dpParam);
         if (result.code != 200) return NotFound(result.Data);
-        var token = _authentication.GenerateJWT(result.Data);
+        var token = _authentication.GenerateJwt(result.Data);
         return Ok(token);
     }
 
     [HttpGet("UserList")]
-    [Authorize(Roles = "Admin")]
+    [Middleware.Authorize]
     public IActionResult GetAllUsers()
     {
-        var result = _authentication.getUserList<User>();
+        var result = _authentication.GetUserList<User>();
         return Ok(result);
     }
 

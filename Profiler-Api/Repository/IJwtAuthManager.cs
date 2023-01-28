@@ -5,7 +5,8 @@ namespace Profiler_Api.Repository;
 
 public interface IJwtAuthManager
 {
-    Response<string> GenerateJWT(User user);
-    Response<T> Execute_Command<T>(string query, DynamicParameters sp_params);
-    Response<List<T>> getUserList<T>();
+    Response<string> GenerateJwt(User user);
+    Response<T> Execute_Command<T>(string query, DynamicParameters spParams);
+    Response<List<T>> GetUserList<T>();
+    public int? ValidateToken(string? token);
 }

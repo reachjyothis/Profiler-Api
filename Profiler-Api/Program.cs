@@ -3,6 +3,8 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Profiler_Api.Repository;
+using Profiler_Api.Services;
+using Profiler_Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,10 +35,13 @@ builder.Services.AddAuthentication(options =>
         };
     });
 
+builder.Services.AddAuthorization();
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 
 builder.Services.AddTransient<IJwtAuthManager, JwtAuthManager>();
+builder.Services.AddTransient<IUserService, UserService>();
 builder.Services.AddControllers();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -85,6 +90,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.UseMiddleware<JwtMiddleware>();
 
 // var summaries = new[]
 // {
