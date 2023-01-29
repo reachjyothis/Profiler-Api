@@ -29,7 +29,7 @@ public class AccountController : ControllerBase
         }
 
         var dpParam = new DynamicParameters();
-        dpParam.Add("email", user.Email, DbType.String);
+        dpParam.Add("username", user.UserName, DbType.String);
         dpParam.Add("password", user.Password, DbType.String);
         dpParam.Add("retVal", DbType.String, direction: ParameterDirection.Output);
         var result = _authentication.Execute_Command<User>("sp_loginUser", dpParam);
