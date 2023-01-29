@@ -39,7 +39,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpGet("UserList")]
-    [Middleware.Authorize]
+    [Authorize(Roles = "Admin")]
     public IActionResult GetAllUsers()
     {
         var result = _authentication.GetUserList<User>();
