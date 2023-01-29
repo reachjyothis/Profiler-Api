@@ -8,8 +8,8 @@ using Profiler_Api.Repository;
 
 namespace Profiler_Api.Controllers;
 
-[Route("api/[controller]")]
 [ApiController]
+[Route("api/[controller]")]
 public class AccountController : ControllerBase
 {
     private readonly IJwtAuthManager _authentication;

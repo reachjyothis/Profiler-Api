@@ -3,23 +3,19 @@ using Profiler_Api.Models;
 using Microsoft.IdentityModel.Tokens;
 using System.Data;
 using System.Data.SqlClient;
-using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace Profiler_Api.Repository;
 
 public class JwtAuthManager: IJwtAuthManager
 {
     private readonly IConfiguration _configuration;
-    private readonly string _jwtSecret;
 
     public JwtAuthManager(IConfiguration configuration)
     {
         _configuration = configuration;
-        _jwtSecret = configuration["JWT:Secret"]!;
     }
     public Response<string> GenerateJwt(User user)
     {
@@ -101,35 +97,4 @@ public class JwtAuthManager: IJwtAuthManager
         return response;
     }
 
-    public int? ValidateToken(string? token)
-    {
-        if (token == null)
-            return null;
-
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(_jwtSecret);
-        try
-        {
-            tokenHandler.ValidateToken(token, new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(key),
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                // set clock-skew to zero so tokens expire exactly at token expiration time (instead of 5 minutes later)
-                ClockSkew = TimeSpan.Zero
-            }, out SecurityToken validatedToken);
-
-            var jwtToken = (JwtSecurityToken)validatedToken;
-            var userId = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
-
-            // return user id from JWT token if validation successful
-            return userId;
-        }
-        catch
-        {
-            // return null if validation fails
-            return null;
-        }
-    }
 }
