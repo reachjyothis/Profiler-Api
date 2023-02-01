@@ -3,10 +3,13 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Profiler_Api.Repository;
+using Microsoft.EntityFrameworkCore;
+using Profiler_Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddDbContext<SchedulerContext>(options => options.UseSqlite(builder.Configuration.GetConnectionString("SchedulerContext")));
 
 // Adding authentication
 builder.Services.AddAuthentication(options =>
@@ -35,7 +38,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("SchedulerContext") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 
 builder.Services.AddTransient<IJwtAuthManager, JwtAuthManager>();

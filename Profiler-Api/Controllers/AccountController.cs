@@ -1,10 +1,10 @@
-﻿using Dapper;
-using Microsoft.AspNetCore.Mvc;
-using Profiler_Api.Models;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Profiler_Api.Repository;
-
+using Profiler_Api.FormModels;
+using Profiler_Api.DbModels;
+using Profiler_Api.Data;
 
 namespace Profiler_Api.Controllers;
 
@@ -13,10 +13,12 @@ namespace Profiler_Api.Controllers;
 public class AccountController : ControllerBase
 {
     private readonly IJwtAuthManager _authentication;
+    private readonly SchedulerContext _db;
 
-    public AccountController(IJwtAuthManager authentication)
+    public AccountController(IJwtAuthManager authentication, SchedulerContext db)
     {
         _authentication = authentication;
+        _db = db;
     }
 
     [HttpPost("Login")]
@@ -28,64 +30,71 @@ public class AccountController : ControllerBase
             return BadRequest("Parameter is missing");
         }
 
-        var dpParam = new DynamicParameters();
-        dpParam.Add("username", user.UserName, DbType.String);
-        dpParam.Add("password", user.Password, DbType.String);
-        dpParam.Add("retVal", DbType.String, direction: ParameterDirection.Output);
-        var result = _authentication.Execute_Command<User>("sp_loginUser", dpParam);
-        if (result.code != 200) return NotFound(result.Data);
-        var token = _authentication.GenerateJwt(result.Data);
+        var dbUser = this._db.Users.Where(s => s.Username == user.UserName).FirstOrDefault<User>();
+        if (dbUser == null)
+        {
+            return BadRequest("Invalid username/password");
+        }
+
+
+        string passwordHash = Utils.Utils.HashPassword(user.Password, dbUser.PasswordSalt, false, out var genSalt);
+        if (dbUser.PasswordHash != passwordHash)
+        {
+            return BadRequest("Invalid username/password");
+        }
+
+        var token = _authentication.GenerateJwt(dbUser);
         return Ok(token);
     }
 
     [HttpGet("UserList")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "A")]
     public IActionResult GetAllUsers()
     {
-        var result = _authentication.GetUserList<User>();
-        return Ok(result);
+        var allUsers = this._db.Users.ToList();
+        return Ok(allUsers);
     }
 
     [HttpPost("Register")]
-    [Authorize(Roles = "Admin")]
-    public IActionResult Register([FromBody] User user)
+    [AllowAnonymous]
+    public IActionResult Register([FromBody] RegisterUser user)
     {
         if (!ModelState.IsValid)
         {
             return BadRequest("Parameter is missing");
         }
-        var dpParam = new DynamicParameters();
-        dpParam.Add("email", user.Email, DbType.String);
-        dpParam.Add("username", user.Username, DbType.String);
-        dpParam.Add("password", user.Password, DbType.String);
-        dpParam.Add("role", user.Role, DbType.String);
-        dpParam.Add("retVal", DbType.String, direction: ParameterDirection.Output);
-        var result = _authentication.Execute_Command<User>("sp_registerUser", dpParam);
-        if (result.code == 200)
+
+        string passwordSalt;
+        string passwordHash = Utils.Utils.HashPassword(user.Password, "", true, out passwordSalt);
+        this._db.Users.Add(new User
         {
-            return Ok(result);
-        }
-        return BadRequest(result);
+            Username = user.UserName,
+            PasswordHash = passwordHash,
+            PasswordSalt = passwordSalt,
+            Email = user.Email,
+            Role = "U",
+            Date = DateTime.Now
+        });
+        this._db.SaveChanges();
+        return Ok("Created.");
     }
 
     [HttpDelete("Delete")]
-    [Authorize(Roles = "Admin")]
-    public IActionResult Delete(string id)
+    [Authorize(Roles = "A")]
+    public IActionResult Delete(int ID)
     {
-        if (id == string.Empty)
+        var user = this._db.Users.Where(u => u.ID == ID).FirstOrDefault<User>();
+        if (user == null)
         {
-            return BadRequest("Parameter is missing");
+            return BadRequest("Invalid user ID");
+        }
+        if (user.ID == 1)
+        {
+            return BadRequest("This is the main Admin - please delete from the backend.");
         }
 
-        var dpParam = new DynamicParameters();
-        dpParam.Add("userid", id, DbType.String);
-
-        dpParam.Add("retVal", DbType.String, direction: ParameterDirection.Output);
-        var result = _authentication.Execute_Command<User>("sp_deleteUser", dpParam);
-        if (result.code == 200)
-        {
-            return Ok(result);
-        }
-        return NotFound(result);
+        this._db.Users.Remove(user);
+        this._db.SaveChanges();
+        return Ok("Deleted.");
     }
 }

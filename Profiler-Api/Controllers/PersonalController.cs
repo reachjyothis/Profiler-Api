@@ -1,20 +1,25 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Profiler_Api.Data;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace Profiler_Api.Controllers;
 
-[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class PersonalController : ControllerBase
 {
+    private SchedulerContext db;
+    public PersonalController(SchedulerContext db)
+    {
+        this.db = db;
+    }
+
     // GET: api/<PersonalController>
     [HttpGet]
     public IEnumerable<string> Get()
     {
-        return new string[] { "value1", "value2" };
+        return this.db.Users.Select(u => u.Username).ToList();
     }
 
     // GET api/<PersonalController>/5

@@ -1,11 +1,9 @@
-﻿using Dapper;
-using Profiler_Api.Models;
-using Microsoft.IdentityModel.Tokens;
-using System.Data;
-using System.Data.SqlClient;
+﻿using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Profiler_Api.FormModels;
+using Profiler_Api.DbModels;
 
 namespace Profiler_Api.Repository;
 
@@ -28,9 +26,7 @@ public class JwtAuthManager: IJwtAuthManager
         //claim is used to add identity to JWT token
         var claims = new[] {
                  new Claim(JwtRegisteredClaimNames.Sub, user.Username),
-                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                  new Claim("roles", user.Role),
-                 new Claim("Date", DateTime.Now.ToString(CultureInfo.InvariantCulture)),
                  new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
              };
         var token = new JwtSecurityToken(_configuration["JWT:Issuer"],
@@ -49,7 +45,7 @@ public class JwtAuthManager: IJwtAuthManager
             Subject = new ClaimsIdentity(new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Username),
-                new Claim("id", user.UserId.ToString()),
+                new Claim("id", user.ID.ToString()),
                 new Claim("roles", user.Role)
             }),
             Expires = DateTime.UtcNow.AddDays(7),
@@ -58,43 +54,9 @@ public class JwtAuthManager: IJwtAuthManager
         var token = tokenHandler.CreateToken(tokenDescriptor);
         var bearerToken = tokenHandler.WriteToken(token);
 
-        response.Data = bearerToken;
-        response.code = 200;
-        response.message = "Token generated";
+        response.Data = "Bearer " + bearerToken;
+        response.Code = 200;
+        response.Message = "Token generated";
         return response;
     }
-
-    public Response<T> Execute_Command<T>(string query, DynamicParameters spParams)
-    {
-        var response = new Response<T>();
-        using IDbConnection dbConnection = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
-        if (dbConnection.State == ConnectionState.Closed)
-            dbConnection.Open();
-        using var transaction = dbConnection.BeginTransaction();
-        try
-        {
-            response.Data = dbConnection.Query<T>(query, spParams, commandType: CommandType.StoredProcedure, transaction: transaction).FirstOrDefault() ?? throw new Exception();
-            response.code = spParams.Get<int>("retVal"); //get output parameter value
-            response.message = "Success";
-            transaction.Commit();
-        }
-        catch (Exception ex)
-        {
-            transaction.Rollback();
-            response.code = 500;
-            response.message = ex.Message;
-        }
-
-        return response;
-    }
-
-    public Response<List<T>> GetUserList<T>()
-    {
-        var response = new Response<List<T>>();
-        using IDbConnection db = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
-        const string query = "Select userid,username,email,[role],reg_date FROM tbl_users";
-        response.Data = db.Query<T>(query, null, commandType: CommandType.Text).ToList();
-        return response;
-    }
-
 }
